@@ -677,10 +677,11 @@ where
 }
 
 /// Creates a new virtio touch device which supports single touch only.
-pub fn new_single_touch<T>(
+pub fn new_touch<T>(
     source: T,
     width: u32,
     height: u32,
+    max_count: u32,
     virtio_features: u64,
 ) -> Result<Input<SocketEventSource<T>>>
 where
@@ -689,7 +690,7 @@ where
     Ok(Input {
         kill_evt: None,
         worker_thread: None,
-        config: defaults::new_single_touch_config(width, height),
+        config: defaults::new_touch_config(width, height, max_count),
         source: Some(SocketEventSource::new(source)),
         virtio_features,
     })

@@ -1261,9 +1261,9 @@ fn set_argument(cfg: &mut Config, name: &str, value: Option<&str>) -> argument::
             cfg.software_tpm = true;
         }
         "single-touch" => {
-            if cfg.virtio_single_touch.is_some() {
+            if cfg.virtio_touch.is_some() {
                 return Err(argument::Error::TooManyArguments(
-                    "`single-touch` already given".to_owned(),
+                    "`single-touch` or `multi-touch` already given".to_owned(),
                 ));
             }
             let mut it = value.unwrap().split(':');
@@ -1276,7 +1276,28 @@ fn set_argument(cfg: &mut Config, name: &str, value: Option<&str>) -> argument::
             if let Some(height) = it.next() {
                 single_touch_spec.set_height(height.trim().parse().unwrap());
             }
-            cfg.virtio_single_touch = Some(single_touch_spec);
+            cfg.virtio_touch = Some(single_touch_spec);
+        }
+        "multi-touch" => {
+            if cfg.virtio_touch.is_some() {
+                return Err(argument::Error::TooManyArguments(
+                    "`single-touch` or `multi-touch` already given".to_owned(),
+                ));
+            }
+            let mut it = value.unwrap().split(':');
+
+            let mut touch_spec =
+                TouchDeviceOption::new(PathBuf::from(it.next().unwrap().to_owned()));
+            if let Some(max_touch_count) = it.next() {
+                touch_spec.set_max_touch_count(max_touch_count.trim().parse().unwrap());
+            }
+            if let Some(width) = it.next() {
+                touch_spec.set_width(width.trim().parse().unwrap());
+            }
+            if let Some(height) = it.next() {
+                touch_spec.set_height(height.trim().parse().unwrap());
+            }
+            cfg.virtio_touch = Some(touch_spec);
         }
         "trackpad" => {
             if cfg.virtio_trackpad.is_some() {
@@ -1418,8 +1439,8 @@ fn validate_arguments(cfg: &mut Config) -> std::result::Result<(), argument::Err
     {
         if let Some(gpu_parameters) = cfg.gpu_parameters.as_ref() {
             let (width, height) = (gpu_parameters.display_width, gpu_parameters.display_height);
-            if let Some(virtio_single_touch) = cfg.virtio_single_touch.as_mut() {
-                virtio_single_touch.set_default_size(width, height);
+            if let Some(virtio_touch) = cfg.virtio_touch.as_mut() {
+                virtio_touch.set_default_size(width, height);
             }
         }
     }
@@ -1550,6 +1571,7 @@ writeback=BOOL - Indicates whether the VM can use writeback caching (default: fa
           Argument::flag("software-tpm", "enable a software emulated trusted platform module device"),
           Argument::value("evdev", "PATH", "Path to an event device node. The device will be grabbed (unusable from the host) and made available to the guest with the same configuration it shows on the host"),
           Argument::value("single-touch", "PATH:WIDTH:HEIGHT", "Path to a socket from where to read single touch input events (such as those from a touchscreen) and write status updates to, optionally followed by width and height (defaults to 800x1280)."),
+          Argument::value("multi-touch", "PATH:TOUCH COUNT:WIDTH:HEIGHT", "Path to a socket from where to read touch input events (such as those from a touchscreen) and write status updates to, optionally followed by max touch count (defaults to 1), width and height (defaults to 800x1280)."),
           Argument::value("trackpad", "PATH:WIDTH:HEIGHT", "Path to a socket from where to read trackpad input events and write status updates to, optionally followed by screen width and height (defaults to 800x1280)."),
           Argument::value("mouse", "PATH", "Path to a socket from where to read mouse input events and write status updates to."),
           Argument::value("keyboard", "PATH", "Path to a socket from where to read keyboard input events and write status updates to."),
@@ -2363,7 +2385,7 @@ mod tests {
         set_argument(&mut config, "trackpad", Some("/dev/single-touch-test")).unwrap();
         validate_arguments(&mut config).unwrap();
         assert_eq!(
-            config.virtio_single_touch.unwrap().get_size(),
+            config.virtio_touch.unwrap().get_size(),
             (DEFAULT_TOUCH_DEVICE_WIDTH, DEFAULT_TOUCH_DEVICE_HEIGHT)
         );
         assert_eq!(
@@ -2389,10 +2411,7 @@ mod tests {
         )
         .unwrap();
         validate_arguments(&mut config).unwrap();
-        assert_eq!(
-            config.virtio_single_touch.unwrap().get_size(),
-            (width, height)
-        );
+        assert_eq!(config.virtio_touch.unwrap().get_size(), (width, height));
     }
 
     #[test]
@@ -2416,10 +2435,7 @@ mod tests {
         )
         .unwrap();
         validate_arguments(&mut config).unwrap();
-        assert_eq!(
-            config.virtio_single_touch.unwrap().get_size(),
-            (width, height)
-        );
+        assert_eq!(config.virtio_touch.unwrap().get_size(), (width, height));
         assert_eq!(config.virtio_trackpad.unwrap().get_size(), (width, height));
     }
 
@@ -2454,7 +2470,7 @@ mod tests {
         .unwrap();
         validate_arguments(&mut config).unwrap();
         assert_eq!(
-            config.virtio_single_touch.unwrap().get_size(),
+            config.virtio_touch.unwrap().get_size(),
             (touch_width, touch_height)
         );
     }

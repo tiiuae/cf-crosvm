@@ -60,6 +60,7 @@ pub struct GidMap {
 
 pub const DEFAULT_TOUCH_DEVICE_HEIGHT: u32 = 1024;
 pub const DEFAULT_TOUCH_DEVICE_WIDTH: u32 = 1280;
+pub const DEFAULT_MAX_TOUCH_COUNT: u32 = 1;
 
 pub struct TouchDeviceOption {
     path: PathBuf,
@@ -67,6 +68,7 @@ pub struct TouchDeviceOption {
     height: Option<u32>,
     default_width: u32,
     default_height: u32,
+    max_touch_count: u32,
 }
 
 impl TouchDeviceOption {
@@ -77,6 +79,7 @@ impl TouchDeviceOption {
             height: None,
             default_width: DEFAULT_TOUCH_DEVICE_WIDTH,
             default_height: DEFAULT_TOUCH_DEVICE_HEIGHT,
+            max_touch_count: DEFAULT_MAX_TOUCH_COUNT,
         }
     }
 
@@ -109,6 +112,14 @@ impl TouchDeviceOption {
             self.width.unwrap_or(self.default_width),
             self.height.unwrap_or(self.default_height),
         )
+    }
+
+    pub fn set_max_touch_count(&mut self, max_count: u32) {
+        self.max_touch_count = std::cmp::max(1, max_count);
+    }
+
+    pub fn get_max_touch_count(&self) -> u32 {
+        self.max_touch_count
     }
 }
 
@@ -199,7 +210,7 @@ pub struct Config {
     pub ac97_parameters: Vec<Ac97Parameters>,
     pub serial_parameters: BTreeMap<(SerialHardware, u8), SerialParameters>,
     pub syslog_tag: Option<String>,
-    pub virtio_single_touch: Option<TouchDeviceOption>,
+    pub virtio_touch: Option<TouchDeviceOption>,
     pub virtio_trackpad: Option<TouchDeviceOption>,
     pub virtio_mouse: Option<PathBuf>,
     pub virtio_keyboard: Option<PathBuf>,
@@ -254,7 +265,7 @@ impl Default for Config {
             ac97_parameters: Vec::new(),
             serial_parameters: BTreeMap::new(),
             syslog_tag: None,
-            virtio_single_touch: None,
+            virtio_touch: None,
             virtio_trackpad: None,
             virtio_mouse: None,
             virtio_keyboard: None,
